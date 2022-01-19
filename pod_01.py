@@ -10,9 +10,6 @@ import GPy
 from ezyrb import POD, RBF, Database, GPR
 from ezyrb import ReducedOrderModel as ROM
 
-from local_gaussian_process import DataBase
-from local_gaussian_process import GaussianProcess
-
 import proper_orthogonal_decomposition as pod
 
 def plot_reconstruction():
@@ -29,7 +26,7 @@ def plot_reconstruction():
     ax0.pcolor(T,Y,F)
     ax1.pcolor(T,Y,reconstucted)
 
-    spectrum = eigenvals/np.sum(eigenvals)
+    spectrum = s/np.sum(s)
 
     ax2.bar(np.arange(n_modes),spectrum[:n_modes],color='r')
     ax2.bar(np.arange(n_modes,spectrum.shape[0]),spectrum[n_modes:],color='b')
@@ -75,13 +72,9 @@ if __name__ == "__main__":
     sigma = .1
     F = np.exp(-.5*((Y-M)/sigma)**2)/(sigma*np.sqrt(2*np.pi))
 
-    u, eigenvals, vh = np.linalg.svd(F, full_matrices=False)
-
+    u, s, vh = np.linalg.svd(F, full_matrices=False)
 
     n_modes = 10
-    print("u.shape = "+str(u.shape))
-    print(eigenvals.shape)
-    print(vh.shape)
 
     u = u[:,:n_modes]
 
@@ -101,19 +94,13 @@ if __name__ == "__main__":
 
     sample_t = np.reshape(t[mask_t],(-1,1))
 
-    print("sample_t.shape ="+ str(sample_t.shape))
-    print("F.shape ="+ str(F.shape))
-
     sample_F = F.T[mask_t].T
 
-    u, s, vh = np.linalg.svd(sample_F, full_matrices=False)
+    u, eigenvals, vh = np.linalg.svd(sample_F, full_matrices=False)
 
     u = u[:,:n_modes]
 
-    #C_new = np.zeros()
     C = u.conj().T.dot(sample_F)
-
-    C_new = np.zeros((0,t.shape[0]))
 
     eigen_scale = eigenvals[:n_modes]/eigenvals[0]
 
@@ -122,39 +109,10 @@ if __name__ == "__main__":
 
     kernel_parameter = .005
 
-
-    for id, (c, l) in enumerate(zip(C,eigen_scale)):
-
-        db = DataBase(sample_t,c)
-
-        gp = GaussianProcess("squared-exp",kernel_parameter*l)
-        gp.fit(db)
-        mu, s = gp.predict(t.reshape(-1,1))
-
-        C_new = np.vstack((C_new,mu.flatten()))
-
-        fig, ax = plt.subplots(1,2)
-
-        ax[0].plot(sample_t,c,'x')
-        ax[0].plot(t,mu)
-        ax[0].plot(t,C_[id])
-
-        ax[1].imshow(gp.kernel(sample_t,sample_t))
-        plt.show()
-
-    print("C_new.shape = "+str(C_new.shape))
-    print("sample_F.shape = "+str(sample_F.shape))
-    print("u.shape = "+str(u.shape))
+    C_new = pod.interpolate_coefficients(sample_t,C,C_,t,kernel_parameter,eigen_scale)
 
 
     F_new = u.dot(C_new)
-
-    print("F_new.shape = "+str(F_new.shape))
-
-
-
-    plt.imshow(F_new)
-    plt.show()
 
     #print(sample_T.shape)
 
